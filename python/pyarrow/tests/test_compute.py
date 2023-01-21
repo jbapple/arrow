@@ -2561,6 +2561,15 @@ def test_tdigest():
     result = pc.tdigest(arr, [0, 0.5, 1])  # positional `q`
     assert result.to_pylist() == [1, 2.5, 4]
 
+def test_hll():
+    arr = pa.array([1, 2, 3, 4])
+    result = pc.hll(arr)
+    assert result.to_pylist() == [2.5]
+
+    arr = pa.chunked_array([pa.array([1, 2]), pa.array([3, 4])])
+    result = pc.tdigest(arr)
+    assert result.to_pylist() == [2.5]
+
 
 def test_fill_null_segfault():
     # ARROW-12672

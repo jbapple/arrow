@@ -173,6 +173,25 @@ class ARROW_EXPORT TDigestOptions : public FunctionOptions {
   uint32_t min_count;
 };
 
+/// \brief Control TDigest approximate quantile kernel behavior
+///
+/// By default, returns the median value.
+class ARROW_EXPORT HllOptions : public FunctionOptions {
+ public:
+  explicit HllOptions(uint8_t lg_config_k = 11, uint8_t type = 4 /* 4, 6, or 8 */,
+                      bool start_full_size = false);
+  static constexpr char const kTypeName[] = "HllOptions";
+  static HllOptions Defaults() { return HllOptions{}; }
+
+  /// Sketch can hold 2^lg_config_k rows
+  uint8_t lg_config_k;
+  /// The HLL mode to use, if/when the sketch reaches that state. 4, 6, or 8
+  uint8_t type;
+  /// Indicates whether to start in HLL mode, keeping memory use constant (if
+  /// HLL_6 or HLL_8) at the cost of starting out using much more memory
+  bool start_full_size;
+};
+
 /// \brief Control Index kernel behavior
 class ARROW_EXPORT IndexOptions : public FunctionOptions {
  public:
@@ -366,6 +385,19 @@ ARROW_EXPORT
 Result<Datum> Variance(const Datum& value,
                        const VarianceOptions& options = VarianceOptions::Defaults(),
                        ExecContext* ctx = NULLPTR);
+
+/// \brief Calculate the approximate NCV of a numeric array
+///
+/// \param[in] value input datum, expecting Array or ChunkedArray
+/// \param[in] options see VarianceOptions for more information
+/// \param[in] ctx the function execution context, optional
+/// \return datum of the computed variance as a DoubleScalar
+///
+/// \since 2.0.0
+/// \note API not yet finalized
+ARROW_EXPORT
+Result<Datum> Hll(const Datum& value, const HllOptions& options = HllOptions::Defaults(),
+                  ExecContext* ctx = NULLPTR);
 
 /// \brief Calculate the quantiles of a numeric array
 ///
