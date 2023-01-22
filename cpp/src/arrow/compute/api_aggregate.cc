@@ -97,9 +97,7 @@ static auto kQuantileOptionsType = GetFunctionOptionsType<QuantileOptions>(
     DataMember("skip_nulls", &QuantileOptions::skip_nulls),
     DataMember("min_count", &QuantileOptions::min_count));
 static auto kHllOptionsType = GetFunctionOptionsType<HllOptions>(
-    DataMember("lg_config_k", &HllOptions::lg_config_k),
-    DataMember("type", &HllOptions::type),
-    DataMember("start_full_size", &HllOptions::start_full_size));
+    DataMember("lg_config_k", &HllOptions::lg_config_k));
 static auto kTDigestOptionsType = GetFunctionOptionsType<TDigestOptions>(
     DataMember("q", &TDigestOptions::q), DataMember("delta", &TDigestOptions::delta),
     DataMember("buffer_size", &TDigestOptions::buffer_size),
@@ -150,11 +148,8 @@ QuantileOptions::QuantileOptions(std::vector<double> q, enum Interpolation inter
       min_count{min_count} {}
 constexpr char QuantileOptions::kTypeName[];
 
-HllOptions::HllOptions(uint8_t lg_config_k, uint8_t type, bool start_full_size)
-    : FunctionOptions(internal::kHllOptionsType),
-      lg_config_k{lg_config_k},
-      type{type},
-      start_full_size{start_full_size} {}
+HllOptions::HllOptions(uint8_t lg_config_k)
+    : FunctionOptions(internal::kHllOptionsType), lg_config_k{lg_config_k} {}
 constexpr char HllOptions::kTypeName[];
 
 TDigestOptions::TDigestOptions(double q, uint32_t delta, uint32_t buffer_size,
