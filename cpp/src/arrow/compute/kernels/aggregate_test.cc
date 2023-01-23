@@ -16,9 +16,11 @@
 // under the License.
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 #include <memory>
+#include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -35,6 +37,7 @@
 #include "arrow/compute/kernels/aggregate_internal.h"
 #include "arrow/compute/kernels/test_util.h"
 #include "arrow/compute/registry.h"
+#include "arrow/testing/generator.h"
 #include "arrow/type.h"
 #include "arrow/type_traits.h"
 #include "arrow/util/bitmap_reader.h"
@@ -3049,6 +3052,20 @@ TEST_F(TestHllKernel, Random) {
   }
 }
 
+// All NaNs are considered equal
+TEST_F(TestHllKernel, NaNs) {
+  unsigned j = 0;
+  DoubleBuilder builder;
+  auto visit_null = []() { return Status::OK(); };
+  auto visit_value = [&](double arg) {
+    return builder.Append(nan(std::to_string(j++).data()));
+  };
+  auto arr = ConstantArrayGenerator::Float64(1ul << 20)->data();
+  auto r = VisitArraySpanInline<DoubleType>(*arr, visit_value, visit_null);
+  auto input = builder.Finish().ValueOrDie();
+  CheckStreamHll(input, HllOptions{}, 1);
+}
+
 // Check a variety of chunked array lengths, with the arrays containing random elements.
 // This used HLL merge.
 TEST_F(TestHllKernel, Chunked) {
@@ -3071,6 +3088,7 @@ TEST_F(TestHllKernel, Chunked) {
     }
   }
 }
+
 
 //
 // Variance/Stddev

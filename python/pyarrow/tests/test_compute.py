@@ -137,6 +137,7 @@ def test_option_class_equality():
         pc.ElementWiseAggregateOptions(skip_nulls=True),
         pc.ExtractRegexOptions("pattern"),
         pc.FilterOptions(),
+        pc.HllOptions(),
         pc.IndexOptions(pa.scalar(1)),
         pc.JoinOptions(),
         pc.ListSliceOptions(0, -1, 1, True),
