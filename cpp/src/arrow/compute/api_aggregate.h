@@ -173,16 +173,14 @@ class ARROW_EXPORT TDigestOptions : public FunctionOptions {
   uint32_t min_count;
 };
 
-/// \brief Control TDigest approximate quantile kernel behavior
-///
-/// By default, returns the median value.
+/// \brief Control Hll approximate cardinality. More space usage yields more accurate
+/// estimates.
 class ARROW_EXPORT HllOptions : public FunctionOptions {
  public:
   explicit HllOptions(uint8_t lg_config_k = 11);
   static constexpr char const kTypeName[] = "HllOptions";
   static HllOptions Defaults() { return HllOptions{}; }
-
-  /// Sketch can hold 2^lg_config_k rows
+  // Sketch can hold 2^lg_config_k values
   uint8_t lg_config_k;
 };
 
