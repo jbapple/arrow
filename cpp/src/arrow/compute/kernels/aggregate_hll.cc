@@ -35,8 +35,6 @@ struct HllImpl : public ScalarAggregator {
   datasketches::hll_union hll;
 
   using ThisType = HllImpl<ArrowType, VisitorArgType>;
-  //using ArrayType = typename TypeTraits<ArrowType>::ArrayType;
-  // using CType = typename TypeTraits<ArrowType>::CType;
 
   explicit HllImpl(const HllOptions& options)
       : options{options}, hll{options.lg_config_k} {}
@@ -45,17 +43,19 @@ struct HllImpl : public ScalarAggregator {
   void Update(T value) {
     hll.update(value);
   }
+
   void Update(Decimal128 x) {
     auto bytes = x.ToBytes();
     hll.update(bytes.data(), bytes.size());
   }
+
   void Update(Decimal256 x) {
     auto bytes = x.ToBytes();
     hll.update(bytes.data(), bytes.size());
   }
-  void Update(std::string_view x) {
-    hll.update(x.data(), x.size());
-  }
+
+  void Update(std::string_view x) { hll.update(x.data(), x.size()); }
+
   void Update(MonthDayNanoIntervalType::MonthDayNanos mdn) {
     std::array<char, sizeof(mdn.months) + sizeof(mdn.days) + sizeof(mdn.nanoseconds)>
         data;
@@ -65,6 +65,7 @@ struct HllImpl : public ScalarAggregator {
                 sizeof(mdn.nanoseconds));
     hll.update(data.data(), data.size());
   }
+
   void Update(DayTimeIntervalType::DayMilliseconds dm) {
     std::array<char, sizeof(dm.days) + sizeof(dm.milliseconds)> data;
     std::memcpy(&data[0], &dm.days, sizeof(dm.days));
@@ -122,8 +123,8 @@ void AddHllKernel(InputType type, ScalarAggregateFunction* func) {
 
 std::shared_ptr<ScalarAggregateFunction> AddHllAggKernels() {
   static auto default_hll_options = HllOptions::Defaults();
-  auto func = std::make_shared<ScalarAggregateFunction>(
-      "hll", Arity::Unary(), hll_doc, &default_hll_options);
+  auto func = std::make_shared<ScalarAggregateFunction>("hll", Arity::Unary(), hll_doc,
+                                                        &default_hll_options);
   // Boolean
   AddHllKernel<BooleanType>(boolean(), func.get());
   // Numeric

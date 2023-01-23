@@ -3010,7 +3010,8 @@ void CheckHll(const Datum& a, const HllOptions& options, uint64_t expected_ndv,
   // Check that we're close in terms of standard deviation from the expected number of
   // distinct values. For 5 sigma, this test should fail one in 1.74M runs.
   constexpr double sigmas = 5;
-  const double stddev = expected_ndv *  sqrt(variance_factor / pow(2, options.lg_config_k));
+  const double stddev =
+      expected_ndv * sqrt(variance_factor / pow(2, options.lg_config_k));
   EXPECT_GT(ndv->value, expected_ndv - sigmas * stddev) << "stddev: " << stddev;
   EXPECT_LT(ndv->value, expected_ndv + sigmas * stddev) << "stddev: " << stddev;
 }
@@ -3078,13 +3079,12 @@ TEST_F(TestHllKernel, Chunked) {
         auto visit_null = []() {};
         auto visit_value = [&](uint64_t arg) { memo.insert(arg); };
         auto rand = random::RandomArrayGenerator(0x97cb9188u + ((i * 10 + j) << j) + k);
-        array =
-            rand.Numeric<UInt64Type>(1ul << i, UINT64_C(0), UINT64_MAX, 0.0);
+        array = rand.Numeric<UInt64Type>(1ul << i, UINT64_C(0), UINT64_MAX, 0.0);
         VisitArraySpanInline<UInt64Type>(*array->data(), visit_value, visit_null);
         array_vector.push_back(array);
       }
-     auto chunked = *ChunkedArray::Make(array_vector);
-     CheckMergeHll(chunked, HllOptions{}, memo.size());
+      auto chunked = *ChunkedArray::Make(array_vector);
+      CheckMergeHll(chunked, HllOptions{}, memo.size());
     }
   }
 }
