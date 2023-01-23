@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cstring>
+
 #include "arrow/compute/api_aggregate.h"
 #include "arrow/compute/kernels/aggregate_internal.h"
 #include "arrow/compute/kernels/common.h"
@@ -51,6 +53,24 @@ struct HllImpl : public ScalarAggregator {
     auto bytes = x.ToBytes();
     hll.update(bytes.data(), bytes.size());
   }
+  void Update(std::string_view x) {
+    hll.update(x.data(), x.size());
+  }
+  void Update(MonthDayNanoIntervalType::MonthDayNanos mdn) {
+    std::array<char, sizeof(mdn.months) + sizeof(mdn.days) + sizeof(mdn.nanoseconds)>
+        data;
+    std::memcpy(&data[0], &mdn.months, sizeof(mdn.months));
+    std::memcpy(&data[sizeof(mdn.months)], &mdn.days, sizeof(mdn.days));
+    std::memcpy(&data[sizeof(mdn.months) + sizeof(mdn.days)], &mdn.nanoseconds,
+                sizeof(mdn.nanoseconds));
+    hll.update(data.data(), data.size());
+  }
+  void Update(DayTimeIntervalType::DayMilliseconds dm) {
+    std::array<char, sizeof(dm.days) + sizeof(dm.milliseconds)> data;
+    std::memcpy(&data[0], &dm.days, sizeof(dm.days));
+    std::memcpy(&data[sizeof(dm.days)], &dm.milliseconds, sizeof(dm.milliseconds));
+    hll.update(data.data(), data.size());
+  }
 
   Status Consume(KernelContext*, const ExecSpan& batch) override {
     if (batch[0].is_array()) {
@@ -86,6 +106,7 @@ Result<std::unique_ptr<KernelState>> HllInit(KernelContext*, const KernelInitArg
       static_cast<const HllOptions&>(*args.options));
 }
 
+// TODO(jbapple): document behavior of counting different NaNs
 const FunctionDoc hll_doc{
     "Calculate the approximate number of distinct (and non-NULL) values of an array",
     ("The precision can be controlled using HllOptions.\n"
@@ -99,50 +120,13 @@ void AddHllKernel(InputType type, ScalarAggregateFunction* func) {
                func);
 }
 
-/*
-void AddCountDistinctKernels(ScalarAggregateFunction* func) {
-  // Boolean
-  AddCountDistinctKernel<BooleanType>(boolean(), func);
-  // Number
-  AddCountDistinctKernel<Int8Type>(int8(), func);
-  AddCountDistinctKernel<Int16Type>(int16(), func);
-  AddCountDistinctKernel<Int32Type>(int32(), func);
-  AddCountDistinctKernel<Int64Type>(int64(), func);
-  AddCountDistinctKernel<UInt8Type>(uint8(), func);
-  AddCountDistinctKernel<UInt16Type>(uint16(), func);
-  AddCountDistinctKernel<UInt32Type>(uint32(), func);
-  AddCountDistinctKernel<UInt64Type>(uint64(), func);
-  AddCountDistinctKernel<HalfFloatType>(float16(), func);
-  AddCountDistinctKernel<FloatType>(float32(), func);
-  AddCountDistinctKernel<DoubleType>(float64(), func);
-  // Date
-  AddCountDistinctKernel<Date32Type>(date32(), func);
-  AddCountDistinctKernel<Date64Type>(date64(), func);
-  // Time
-  AddCountDistinctKernel<Time32Type>(match::SameTypeId(Type::TIME32), func);
-  AddCountDistinctKernel<Time64Type>(match::SameTypeId(Type::TIME64), func);
-  // Timestamp & Duration
-  AddCountDistinctKernel<TimestampType>(match::SameTypeId(Type::TIMESTAMP), func);
-  AddCountDistinctKernel<DurationType>(match::SameTypeId(Type::DURATION), func);
-  // Interval
-  AddCountDistinctKernel<MonthIntervalType>(month_interval(), func);
-  AddCountDistinctKernel<DayTimeIntervalType>(day_time_interval(), func);
-  AddCountDistinctKernel<MonthDayNanoIntervalType>(month_day_nano_interval(), func);
-  // Binary & String
-  AddCountDistinctKernel<BinaryType, std::string_view>(match::BinaryLike(), func);
-  AddCountDistinctKernel<LargeBinaryType, std::string_view>(match::LargeBinaryLike(),
-                                                            func);
-  // Fixed binary & Decimal
-  AddCountDistinctKernel<FixedSizeBinaryType, std::string_view>(
-      match::FixedSizeBinaryLike(), func);
-}
-*/
-
 std::shared_ptr<ScalarAggregateFunction> AddHllAggKernels() {
   static auto default_hll_options = HllOptions::Defaults();
   auto func = std::make_shared<ScalarAggregateFunction>(
       "hll", Arity::Unary(), hll_doc, &default_hll_options);
-  // TODO(jbapple): other types as in AddCountDistinctKernels
+  // Boolean
+  AddHllKernel<BooleanType>(boolean(), func.get());
+  // Numeric
   AddHllKernel<Int8Type>(int8(), func.get());
   AddHllKernel<Int16Type>(int16(), func.get());
   AddHllKernel<Int32Type>(int32(), func.get());
@@ -154,9 +138,25 @@ std::shared_ptr<ScalarAggregateFunction> AddHllAggKernels() {
   AddHllKernel<HalfFloatType>(float16(), func.get());
   AddHllKernel<FloatType>(float32(), func.get());
   AddHllKernel<DoubleType>(float64(), func.get());
-
-  // AddHllKernels(HllInit, NumericTypes(), func.get());
-  // AddHllKernels(HllInit, {decimal128(1, 1), decimal256(1, 1)}, func.get());
+  // Date
+  AddHllKernel<Date32Type>(date32(), func.get());
+  AddHllKernel<Date64Type>(date64(), func.get());
+  // Time
+  AddHllKernel<Time32Type>(match::SameTypeId(Type::TIME32), func.get());
+  AddHllKernel<Time64Type>(match::SameTypeId(Type::TIME64), func.get());
+  // Timestamp & Duration
+  AddHllKernel<TimestampType>(match::SameTypeId(Type::TIMESTAMP), func.get());
+  AddHllKernel<DurationType>(match::SameTypeId(Type::DURATION), func.get());
+  // Interval
+  AddHllKernel<MonthIntervalType>(month_interval(), func.get());
+  AddHllKernel<DayTimeIntervalType>(day_time_interval(), func.get());
+  AddHllKernel<MonthDayNanoIntervalType>(month_day_nano_interval(), func.get());
+  // Binary & String
+  AddHllKernel<BinaryType, std::string_view>(match::BinaryLike(), func.get());
+  AddHllKernel<LargeBinaryType, std::string_view>(match::LargeBinaryLike(), func.get());
+  // Fixed binary & Decimal
+  AddHllKernel<FixedSizeBinaryType, std::string_view>(match::FixedSizeBinaryLike(),
+                                                      func.get());
   return func;
 }
 
