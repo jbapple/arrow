@@ -19,6 +19,7 @@ import datetime
 from functools import lru_cache, partial
 import inspect
 import itertools
+import math
 import os
 import pickle
 import pytest
@@ -2751,6 +2752,18 @@ def test_list_element():
     result = pa.compute.list_element(lists, index)
     expected = pa.array([{'a': 5.6, 'b': 6}, {'a': .6, 'b': 8}], element_type)
     assert result.equals(expected)
+
+
+# TODO(jbapple): arrow/python/pyarrow/compute.py:203: RuntimeWarning:
+# Python binding for HllOptions not exposed
+def test_hll():
+    seed = datetime.datetime.now()
+    samples = [seed.replace(year=y) for y in range(1992, 2092)]
+    arr = pa.array(samples, pa.timestamp("ns"))
+    ndv_estimate = pc.hll(arr)
+    stddev = len(samples) * math.sqrt(1.04 * 1.04 / pow(2, 11))
+    assert ndv_estimate.as_py() <= len(samples) + 5 * stddev
+    assert ndv_estimate.as_py() >= len(samples) - 5 * stddev
 
 
 def test_count_distinct():
