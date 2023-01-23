@@ -16,6 +16,7 @@
 // under the License.
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -2995,135 +2996,80 @@ TEST_F(TestInt32ModeKernel, Sliced) {
 // Hll
 //
 
-void CheckHll(const Datum& array, const HllOptions& options, uint64_t expected_ndv) {
-  ASSERT_OK_AND_ASSIGN(Datum out_ndv, Hll(array, options));
+// Check that for array or chunked array a, Hll returns something close to expected_ndv,
+// where close is defined by variance_factor according to the proofs about HyperLogLog in
+// the literature.
+void CheckHll(const Datum& a, const HllOptions& options, uint64_t expected_ndv,
+              double variance_factor) {
+  ASSERT_OK_AND_ASSIGN(Datum out_ndv, Hll(a, options));
   auto ndv = checked_cast<const DoubleScalar*>(out_ndv.scalar().get());
   ASSERT_TRUE(ndv->is_valid);
+  // Check that we're close in terms of standard deviation from the expected number of
+  // distinct values. For 5 sigma, this test should fail one in 1.74M runs.
+  constexpr double sigmas = 5;
+  const double stddev = expected_ndv *  sqrt(variance_factor / pow(2, options.lg_config_k));
+  EXPECT_GT(ndv->value, expected_ndv - sigmas * stddev) << "stddev: " << stddev;
+  EXPECT_LT(ndv->value, expected_ndv + sigmas * stddev) << "stddev: " << stddev;
 }
 
-template <typename ArrowType>
-class TestPrimitiveHllKernel : public ::testing::Test {
- public:
-  using Traits = TypeTraits<ArrowType>;
-  using ScalarType = typename TypeTraits<DoubleType>::ScalarType;
+// Classic HyperLogLog supports merges and has a variance factor of 1.04^2.
+void CheckMergeHll(const Datum& array, const HllOptions& options, uint64_t expected_ndv) {
+  CheckHll(array, options, expected_ndv, 1.04 * 1.04);
+}
 
-  void AssertHllIs(const Array& array, const HllOptions& options,
-                      double expected_var) {
-    CheckHll(array, options, expected_var);
+// When no HLL merges have occurred, the variance is lower
+void CheckStreamHll(const Datum& array, const HllOptions& options,
+                    uint64_t expected_ndv) {
+  // "Streamed Approximate Counting of Distinct Elements: Beating Optimal Batch Methods"
+  // by Daniel Ting
+  CheckHll(array, options, expected_ndv, 1.0 / 1.4426);
+}
+
+class TestHllKernel : public ::testing::Test {};
+
+// Check a variety of array lengths, with the arrays containing random elements. This uses
+// streaming HLL and has a lower variance.
+TEST_F(TestHllKernel, Random) {
+  for (int i = 0; i <= 20; ++i) {
+    UInt64Builder builder;
+    std::unordered_set<uint64_t> memo;
+    auto visit_null = []() { return Status::OK(); };
+    auto visit_value = [&](uint64_t arg) {
+      const bool inserted = memo.insert(arg).second;
+      if (inserted) {
+        return builder.Append(arg);
+      }
+      return Status::OK();
+    };
+    auto rand = random::RandomArrayGenerator(0x3869ec73u + i);
+    auto arr = rand.Numeric<UInt64Type>(1ul << i, UINT64_C(0), UINT64_MAX, 0.0)->data();
+    auto r = VisitArraySpanInline<UInt64Type>(*arr, visit_value, visit_null);
+    auto input = builder.Finish().ValueOrDie();
+    CheckStreamHll(input, HllOptions{}, memo.size());
   }
+}
 
-  void AssertHllIs(const std::shared_ptr<ChunkedArray>& array,
-                      const HllOptions& options, double expected_var) {
-    CheckHll(array, options, expected_var);
+// Check a variety of chunked array lengths, with the arrays containing random elements.
+// This used HLL merge.
+TEST_F(TestHllKernel, Chunked) {
+  for (int i = 0; i <= 10; ++i) {
+    for (int j = 0; j <= 10; ++j) {
+      std::unordered_set<uint64_t> memo;
+      ArrayVector array_vector;
+      for (unsigned k = 0; k < 1ul << j; ++k) {
+        std::shared_ptr<Array> array;
+        auto visit_null = []() {};
+        auto visit_value = [&](uint64_t arg) { memo.insert(arg); };
+        auto rand = random::RandomArrayGenerator(0x97cb9188u + ((i * 10 + j) << j) + k);
+        array =
+            rand.Numeric<UInt64Type>(1ul << i, UINT64_C(0), UINT64_MAX, 0.0);
+        VisitArraySpanInline<UInt64Type>(*array->data(), visit_value, visit_null);
+        array_vector.push_back(array);
+      }
+     auto chunked = *ChunkedArray::Make(array_vector);
+     CheckMergeHll(chunked, HllOptions{}, memo.size());
+    }
   }
-
-  void AssertHllIs(const std::string& json, const HllOptions& options,
-                   double expected_var) {
-    auto array = ArrayFromJSON(type_singleton(), json);
-    AssertHllIs(*array, options, expected_var);
-  }
-
-  void AssertHllIs(const std::vector<std::string>& json, const HllOptions& options,
-                   double expected_var) {
-    auto chunked = ChunkedArrayFromJSON(type_singleton(), json);
-    AssertHllIs(chunked, options, expected_var);
-  }
-
-  void AssertHllIsInvalid(const Array& array, const HllOptions& options) {
-    AssertHllIsInvalidInternal(array, options);
-  }
-
-  void AssertHllIsInvalid(const std::shared_ptr<ChunkedArray>& array,
-                          const HllOptions& options) {
-    AssertHllIsInvalidInternal(array, options);
-  }
-
-  void AssertHllIsInvalid(const std::string& json, const HllOptions& options) {
-    auto array = ArrayFromJSON(type_singleton(), json);
-    AssertHllIsInvalid(*array, options);
-  }
-
-  void AssertHllIsInvalid(const std::vector<std::string>& json,
-                          const HllOptions& options) {
-    auto array = ChunkedArrayFromJSON(type_singleton(), json);
-    AssertHllIsInvalid(array, options);
-  }
-
-  std::shared_ptr<DataType> type_singleton() { return Traits::type_singleton(); }
-
- private:
-  void AssertHllIsInvalidInternal(const Datum& array, const HllOptions& options) {
-    ASSERT_OK_AND_ASSIGN(Datum out_var, Hll(array, options));
-    auto ndv = checked_cast<const ScalarType*>(out_var.scalar().get());
-    ASSERT_FALSE(ndv->is_valid);
-  }
-};
-
-template <typename ArrowType>
-class TestNumericHllKernel : public TestPrimitiveHllKernel<ArrowType> {};
-
-// Reference value from numpy.var
-TYPED_TEST_SUITE(TestNumericHllKernel, NumericArrowTypes);
-TYPED_TEST(TestNumericHllKernel, Basics) {
-  HllOptions options;  // ddof = 0, population variance/stddev
-
-  this->AssertHllIs("[100]", options, 0);
-  this->AssertHllIs("[1, 2, 3]", options, 0.6666666666666666);
-  this->AssertHllIs("[null, 1, 2, null, 3]", options, 0.6666666666666666);
-
-  // std::vector<std::string> chunks;
-  // chunks = {"[]", "[1]", "[2]", "[null]", "[3]"};
-  // this->AssertHllIs(chunks, options, 0.6666666666666666);
-  // chunks = {"[1, 2, 3]", "[4, 5, 6]", "[7, 8]"};
-  // this->AssertHllIs(chunks, options, 5.25);
-  // chunks = {"[1, 2, 3, 4, 5, 6, 7]", "[8]"};
-  // this->AssertHllIs(chunks, options, 5.25);
-
-  // this->AssertHllIsInvalid("[null, null, null]", options);
-  // this->AssertHllIsInvalid("[]", options);
-  // this->AssertHllIsInvalid("[]", options);
-
-  // options.ddof = 1;  // sample variance/stddev
-
-  this->AssertHllIs("[1, 2]", options, 0.5);
-
-  // chunks = {"[1]", "[2]"};
-  // this->AssertHllIs(chunks, options, 0.5);
-  // chunks = {"[1, 2, 3]", "[4, 5, 6]", "[7, 8]"};
-  // this->AssertHllIs(chunks, options, 6.0);
-  // chunks = {"[1, 2, 3, 4, 5, 6, 7]", "[8]"};
-  // this->AssertHllIs(chunks, options, 6.0);
-
-  // this->AssertHllIsInvalid("[100]", options);
-  // this->AssertHllIsInvalid("[100, null, null]", options);
-  // chunks = {"[100]", "[null]", "[]"};
-  // this->AssertHllIsInvalid(chunks, options);
-
-  // auto ty = this->type_singleton();
-  // EXPECT_THAT(Hll(*MakeScalar(ty, 5)), ResultWith(Datum(0.0)));
-  // EXPECT_THAT(Hll(*MakeScalar(ty, 5)), ResultWith(Datum(0.0)));
-  // EXPECT_THAT(Hll(*MakeScalar(ty, 5), options),
-  //             ResultWith(Datum(MakeNullScalar(float64()))));
-  // EXPECT_THAT(Hll(*MakeScalar(ty, 5), options),
-  //             ResultWith(Datum(MakeNullScalar(float64()))));
-  // EXPECT_THAT(Hll(MakeNullScalar(ty)), ResultWith(Datum(MakeNullScalar(float64()))));
-  // EXPECT_THAT(Hll(MakeNullScalar(ty)), ResultWith(Datum(MakeNullScalar(float64()))));
-
-  // skip_nulls and min_count
-  // options.ddof = 0;
-  // options.min_count = 3;
-  this->AssertHllIs("[1, 2, 3]", options, 0.6666666666666666);
-  // this->AssertHllIsInvalid("[1, 2, null]", options);
-
-  // options.min_count = 0;
-  // options.skip_nulls = false;
-  this->AssertHllIs("[1, 2, 3]", options, 0.6666666666666666);
-  // this->AssertHllIsInvalid("[1, 2, 3, null]", options);
-
-  // options.min_count = 4;
-  // options.skip_nulls = false;
-  // this->AssertHllIsInvalid("[1, 2, 3]", options);
-  // this->AssertHllIsInvalid("[1, 2, 3, null]", options);
 }
 
 //
