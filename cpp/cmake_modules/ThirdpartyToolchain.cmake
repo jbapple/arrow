@@ -51,6 +51,7 @@ set(ARROW_THIRDPARTY_DEPENDENCIES
     Brotli
     BZip2
     c-ares
+    DataSketches
     gflags
     GLOG
     google_cloud_cpp_storage
@@ -161,6 +162,8 @@ macro(build_dependency DEPENDENCY_NAME)
     build_bzip2()
   elseif("${DEPENDENCY_NAME}" STREQUAL "c-ares")
     build_cares()
+  elseif("${DEPENDENCY_NAME}" STREQUAL "DataSketches")
+    build_datasketches()
   elseif("${DEPENDENCY_NAME}" STREQUAL "gflags")
     build_gflags()
   elseif("${DEPENDENCY_NAME}" STREQUAL "GLOG")
@@ -509,6 +512,14 @@ if(DEFINED ENV{ARROW_CRC32C_URL})
 else()
   set_urls(CRC32C_SOURCE_URL
            "https://github.com/google/crc32c/archive/${ARROW_CRC32C_BUILD_VERSION}.tar.gz"
+  )
+endif()
+
+if(DEFINED ENV{ARROW_DATASKETCHES_URL})
+  set(DATASKETCHES_SOURCE_URL "$ENV{ARROW_DATASKETCHES_URL}")
+else()
+  set_urls(DATASKETCHES_SOURCE_URL
+           "https://github.com/apache/datasketches-cpp/archive/refs/tags/${ARROW_DATASKETCHES_BUILD_VERSION}.tar.gz"
   )
 endif()
 
@@ -2196,6 +2207,51 @@ if(ARROW_BUILD_BENCHMARKS)
                      IS_RUNTIME_DEPENDENCY
                      FALSE)
 endif()
+
+macro(build_datasketches)
+  message(STATUS "Building datasketches from source")
+  #set(DATASKETCHES_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/datasketches-cpp/src/datasketches-cpp-install")
+  #set(XSIMD_CMAKE_ARGS ${EP_COMMON_CMAKE_ARGS} "-DCMAKE_INSTALL_PREFIX=${XSIMD_PREFIX}")
+
+  externalproject_add(datasketches-cpp
+                      ${EP_COMMON_OPTIONS}
+                      #PREFIX "${CMAKE_BINARY_DIR}"
+                      URL ${DATASKETCHES_SOURCE_URL}
+                      URL_HASH "SHA256=${ARROW_DATASKETCHES_BUILD_SHA256_CHECKSUM}"
+                      #CMAKE_ARGS ${XSIMD_CMAKE_ARGS}
+                      )
+
+  set(DATASKETCHES_INCLUDE_DIR "${DATASKETCHES_PREFIX}/include")
+  # The include directory must exist before it is referenced by a target.
+  file(MAKE_DIRECTORY "${DATASKETCHES_INCLUDE_DIR}")
+
+  add_dependencies(toolchain datasketches-cpp)
+  add_dependencies(toolchain-tests datasketches-cpp)
+
+  set(DATASKETCHES_VENDORED TRUE)
+endmacro()
+
+set(ARROW_USE_DATASKETCHES TRUE)
+
+
+resolve_dependency(datasketches-cpp
+  REQUIRED_VERSION
+  "4.0.0"
+  FORCE_ANY_NEWER_VERSION
+  TRUE)
+
+if(datasketches_SOURCE STREQUAL "BUNDLED")
+  add_library(datasketches INTERFACE IMPORTED)
+  if(CMAKE_VERSION VERSION_LESS 3.11)
+    set_target_properties(datasketches PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+      "${DATASKETCHES_INCLUDE_DIR}")
+  else()
+    target_include_directories(datasketches INTERFACE "${DATASKETCHES_INCLUDE_DIR}")
+  endif()
+else()
+  message(STATUS "datasketches found. Headers: ${datasketches_INCLUDE_DIRS}")
+endif()
+
 
 macro(build_rapidjson)
   message(STATUS "Building RapidJSON from source")
