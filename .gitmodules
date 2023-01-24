@@ -4,6 +4,3 @@
 [submodule "testing"]
 	path = testing
 	url = https://github.com/apache/arrow-testing
-[submodule "datasketches-cpp"]
-	path = cpp/src/datasketches-cpp
-	url = https://github.com/apache/datasketches-cpp
