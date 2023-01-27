@@ -23,7 +23,7 @@
 #include "arrow/type.h"
 #include "arrow/type_fwd.h"
 #include "arrow/type_traits.h"
-#include "datasketches-cpp/hll/include/hll.hpp"
+#include "datasketches/hll/include/hll.hpp"
 
 namespace arrow {
 namespace compute {

@@ -2242,12 +2242,12 @@ resolve_dependency(datasketches
   TRUE)
 
 if(datasketches_SOURCE STREQUAL "BUNDLED")
-  add_library(datasketches INTERFACE IMPORTED)
+  #add_library(datasketches INTERFACE IMPORTED)
   if(CMAKE_VERSION VERSION_LESS 3.11)
     set_target_properties(datasketches PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
       "${DATASKETCHES_INCLUDE_DIR}")
   else()
-    target_include_directories(datasketches INTERFACE "${DATASKETCHES_INCLUDE_DIR}")
+    #target_include_directories(datasketches INTERFACE "${DATASKETCHES_INCLUDE_DIR}")
   endif()
 else()
   message(STATUS "datasketches found. Headers: ${datasketches_INCLUDE_DIRS}")
