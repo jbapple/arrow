@@ -536,6 +536,7 @@ include_directories(src)
 
 # Compiled flatbuffers files
 include_directories(src/generated)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/datasketches/common/include)
 
 #
 # Visibility
