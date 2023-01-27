@@ -3089,7 +3089,6 @@ TEST_F(TestHllKernel, Chunked) {
   }
 }
 
-
 //
 // Variance/Stddev
 //

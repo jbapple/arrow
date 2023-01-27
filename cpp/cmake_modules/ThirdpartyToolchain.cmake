@@ -162,7 +162,7 @@ macro(build_dependency DEPENDENCY_NAME)
     build_bzip2()
   elseif("${DEPENDENCY_NAME}" STREQUAL "c-ares")
     build_cares()
-  elseif("${DEPENDENCY_NAME}" STREQUAL "DataSketches")
+  elseif("${DEPENDENCY_NAME}" STREQUAL "datasketches")
     build_datasketches()
   elseif("${DEPENDENCY_NAME}" STREQUAL "gflags")
     build_gflags()
@@ -225,6 +225,7 @@ macro(provide_find_module PACKAGE_NAME ARROW_CMAKE_PACKAGE_NAME)
 endmacro()
 
 macro(resolve_dependency DEPENDENCY_NAME)
+  message("resolve_dependency: ${DEPENDENCY_NAME}")
   set(options)
   set(one_value_args
       FORCE_ANY_NEWER_VERSION
@@ -260,6 +261,7 @@ macro(resolve_dependency DEPENDENCY_NAME)
   if(ARG_COMPONENTS)
     list(APPEND FIND_PACKAGE_ARGUMENTS COMPONENTS ${ARG_COMPONENTS})
   endif()
+  message("DEPENDENCY_NAME_SOURCE: " ${DEPENDENCY_NAME}_SOURCE)
   if(${DEPENDENCY_NAME}_SOURCE STREQUAL "AUTO")
     find_package(${FIND_PACKAGE_ARGUMENTS})
     set(COMPATIBLE ${${PACKAGE_NAME}_FOUND})
@@ -2210,31 +2212,30 @@ endif()
 
 macro(build_datasketches)
   message(STATUS "Building datasketches from source")
-  #set(DATASKETCHES_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/datasketches-cpp/src/datasketches-cpp-install")
-  #set(XSIMD_CMAKE_ARGS ${EP_COMMON_CMAKE_ARGS} "-DCMAKE_INSTALL_PREFIX=${XSIMD_PREFIX}")
+  set(DATASKETCHES_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/datasketches/src/datasketches-install")
+  set(DATASKETCHES_CMAKE_ARGS ${EP_COMMON_CMAKE_ARGS} "-DCMAKE_INSTALL_PREFIX=${DATASKETCHES_PREFIX}")
 
-  externalproject_add(datasketches-cpp
+  externalproject_add(datasketches
                       ${EP_COMMON_OPTIONS}
-                      #PREFIX "${CMAKE_BINARY_DIR}"
+                      PREFIX "${CMAKE_BINARY_DIR}"
                       URL ${DATASKETCHES_SOURCE_URL}
                       URL_HASH "SHA256=${ARROW_DATASKETCHES_BUILD_SHA256_CHECKSUM}"
-                      #CMAKE_ARGS ${XSIMD_CMAKE_ARGS}
+                      CMAKE_ARGS ${DATASKETCHES_CMAKE_ARGS}
                       )
 
-  set(DATASKETCHES_INCLUDE_DIR "${DATASKETCHES_PREFIX}/include")
+  set(DATASKETCHES_INCLUDE_DIR "${DATASKETCHES_PREFIX}")
   # The include directory must exist before it is referenced by a target.
   file(MAKE_DIRECTORY "${DATASKETCHES_INCLUDE_DIR}")
 
-  add_dependencies(toolchain datasketches-cpp)
-  add_dependencies(toolchain-tests datasketches-cpp)
+  add_dependencies(toolchain datasketches)
+  add_dependencies(toolchain-tests datasketches)
 
   set(DATASKETCHES_VENDORED TRUE)
 endmacro()
 
 set(ARROW_USE_DATASKETCHES TRUE)
 
-
-resolve_dependency(datasketches-cpp
+resolve_dependency(datasketches
   REQUIRED_VERSION
   "4.0.0"
   FORCE_ANY_NEWER_VERSION
@@ -2250,6 +2251,7 @@ if(datasketches_SOURCE STREQUAL "BUNDLED")
   endif()
 else()
   message(STATUS "datasketches found. Headers: ${datasketches_INCLUDE_DIRS}")
+  message(STATUS "datasketches found. Headers: ${DATASKETCHES_INCLUDE_DIR}")
 endif()
 
 

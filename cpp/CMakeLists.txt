@@ -537,8 +537,6 @@ include_directories(src)
 # Compiled flatbuffers files
 include_directories(src/generated)
 
-include_directories(src/datasketches-cpp/common/include)
-
 #
 # Visibility
 #
