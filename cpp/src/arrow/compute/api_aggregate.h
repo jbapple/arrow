@@ -381,12 +381,11 @@ Result<Datum> Variance(const Datum& value,
 /// \brief Calculate the approximate NCV of a numeric array
 ///
 /// \param[in] value input datum, expecting Array or ChunkedArray
-/// \param[in] options see VarianceOptions for more information
+/// \param[in] options see HllOptions for more information
 /// \param[in] ctx the function execution context, optional
-/// \return datum of the computed variance as a DoubleScalar
+/// \return datum of the computed approximate distinct cardinality as a DoubleScalar
 ///
-/// \since 2.0.0
-/// \note API not yet finalized
+/// \since 11.0.0
 ARROW_EXPORT
 Result<Datum> Hll(const Datum& value, const HllOptions& options = HllOptions::Defaults(),
                   ExecContext* ctx = NULLPTR);

@@ -2755,8 +2755,6 @@ def test_list_element():
     assert result.equals(expected)
 
 
-# TODO(jbapple): arrow/python/pyarrow/compute.py:203: RuntimeWarning:
-# Python binding for HllOptions not exposed
 def test_hll():
     seed = datetime.datetime.now()
     samples = [seed.replace(year=y) for y in range(1992, 2092)]

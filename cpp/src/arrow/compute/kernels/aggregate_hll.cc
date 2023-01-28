@@ -23,6 +23,10 @@
 #include "arrow/type.h"
 #include "arrow/type_fwd.h"
 #include "arrow/type_traits.h"
+
+#if defined(ROTL64)
+#undef ROTL64
+#endif
 #include "datasketches/hll/include/hll.hpp"
 
 namespace arrow {
@@ -111,7 +115,7 @@ Result<std::unique_ptr<KernelState>> HllInit(KernelContext*, const KernelInitArg
 const FunctionDoc hll_doc{
     "Calculate the approximate number of distinct (and non-NULL) values of an array",
     ("The precision can be controlled using HllOptions.\n"
-     "Nulls are ignored."),
+     "Nulls are ignored. All NaNs of a given type are treated as equal."),
     {"array"},
     "HllOptions"};
 
