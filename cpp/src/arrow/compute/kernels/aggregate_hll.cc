@@ -24,10 +24,7 @@
 #include "arrow/type_fwd.h"
 #include "arrow/type_traits.h"
 
-#if defined(ROTL64)
-#undef ROTL64
-#endif
-#include "datasketches/hll/include/hll.hpp"
+#include <datasketches-cpp/hll/include/hll.hpp>
 
 namespace arrow {
 namespace compute {

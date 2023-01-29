@@ -51,7 +51,6 @@ set(ARROW_THIRDPARTY_DEPENDENCIES
     Brotli
     BZip2
     c-ares
-    DataSketches
     gflags
     GLOG
     google_cloud_cpp_storage
@@ -162,8 +161,6 @@ macro(build_dependency DEPENDENCY_NAME)
     build_bzip2()
   elseif("${DEPENDENCY_NAME}" STREQUAL "c-ares")
     build_cares()
-  elseif("${DEPENDENCY_NAME}" STREQUAL "datasketches")
-    build_datasketches()
   elseif("${DEPENDENCY_NAME}" STREQUAL "gflags")
     build_gflags()
   elseif("${DEPENDENCY_NAME}" STREQUAL "GLOG")
@@ -225,7 +222,6 @@ macro(provide_find_module PACKAGE_NAME ARROW_CMAKE_PACKAGE_NAME)
 endmacro()
 
 macro(resolve_dependency DEPENDENCY_NAME)
-  message("resolve_dependency: ${DEPENDENCY_NAME}")
   set(options)
   set(one_value_args
       FORCE_ANY_NEWER_VERSION
@@ -261,7 +257,6 @@ macro(resolve_dependency DEPENDENCY_NAME)
   if(ARG_COMPONENTS)
     list(APPEND FIND_PACKAGE_ARGUMENTS COMPONENTS ${ARG_COMPONENTS})
   endif()
-  message("DEPENDENCY_NAME_SOURCE: " ${DEPENDENCY_NAME}_SOURCE)
   if(${DEPENDENCY_NAME}_SOURCE STREQUAL "AUTO")
     find_package(${FIND_PACKAGE_ARGUMENTS})
     set(COMPATIBLE ${${PACKAGE_NAME}_FOUND})
@@ -514,14 +509,6 @@ if(DEFINED ENV{ARROW_CRC32C_URL})
 else()
   set_urls(CRC32C_SOURCE_URL
            "https://github.com/google/crc32c/archive/${ARROW_CRC32C_BUILD_VERSION}.tar.gz"
-  )
-endif()
-
-if(DEFINED ENV{ARROW_DATASKETCHES_URL})
-  set(DATASKETCHES_SOURCE_URL "$ENV{ARROW_DATASKETCHES_URL}")
-else()
-  set_urls(DATASKETCHES_SOURCE_URL
-           "https://github.com/apache/datasketches-cpp/archive/refs/tags/${ARROW_DATASKETCHES_BUILD_VERSION}.tar.gz"
   )
 endif()
 
@@ -2209,43 +2196,6 @@ if(ARROW_BUILD_BENCHMARKS)
                      IS_RUNTIME_DEPENDENCY
                      FALSE)
 endif()
-
-macro(build_datasketches)
-  message(STATUS "Building datasketches from source")
-  set(DATASKETCHES_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/datasketches/src/datasketches-install")
-  set(DATASKETCHES_CMAKE_ARGS ${EP_COMMON_CMAKE_ARGS} "-DCMAKE_INSTALL_PREFIX=${DATASKETCHES_PREFIX}")
-
-  externalproject_add(datasketches
-                      ${EP_COMMON_OPTIONS}
-                      PREFIX "${CMAKE_BINARY_DIR}"
-                      URL ${DATASKETCHES_SOURCE_URL}
-                      URL_HASH "SHA256=${ARROW_DATASKETCHES_BUILD_SHA256_CHECKSUM}"
-                      CMAKE_ARGS ${DATASKETCHES_CMAKE_ARGS})
-
-  set(DATASKETCHES_INCLUDE_DIR "${DATASKETCHES_PREFIX}")
-  # The include directory must exist before it is referenced by a target.
-  file(MAKE_DIRECTORY "${DATASKETCHES_INCLUDE_DIR}")
-
-  add_dependencies(toolchain datasketches)
-  add_dependencies(toolchain-tests datasketches)
-
-  set(DATASKETCHES_VENDORED TRUE)
-endmacro()
-
-# set(ARROW_USE_DATASKETCHES TRUE)
-
-resolve_dependency(datasketches
-  REQUIRED_VERSION
-  "4.0.0"
-  FORCE_ANY_NEWER_VERSION
-  TRUE)
-
-# if(datasketches_SOURCE STREQUAL "BUNDLED")
-#   if(CMAKE_VERSION VERSION_LESS 3.11)
-#     set_target_properties(datasketches PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-#       "${DATASKETCHES_INCLUDE_DIR}")
-#   endif()
-# endif()
 
 macro(build_rapidjson)
   message(STATUS "Building RapidJSON from source")
@@ -4342,6 +4292,25 @@ if(CMAKE_VERSION VERSION_LESS 3.11)
 else()
   target_include_directories(arrow::hadoop INTERFACE "${HADOOP_HOME}/include")
 endif()
+
+# ----------------------------------------------------------------------
+# Apache DataSketches
+
+set(DATASKETCHES_HOME "${THIRDPARTY_DIR}/datasketches-cpp")
+
+add_library(arrow::datasketches INTERFACE IMPORTED)
+if(CMAKE_VERSION VERSION_LESS 3.11)
+  set_target_properties(arrow::datasketches PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+                                                 "${DATASKETCHES_HOME}/include")
+  set_target_properties(arrow::datasketches PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+    "${DATASKETCHES_HOME}/include/datasketches-cpp/common/include")
+else()
+  target_include_directories(arrow::datasketches INTERFACE "${DATASKETCHES_HOME}/include")
+  target_include_directories(arrow::datasketches INTERFACE
+    "${DATASKETCHES_HOME}/include/datasketches-cpp/common/include")
+endif()
+
+
 
 # ----------------------------------------------------------------------
 # Apache ORC

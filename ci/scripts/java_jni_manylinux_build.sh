@@ -93,7 +93,6 @@ cmake \
   -DPARQUET_REQUIRE_ENCRYPTION=OFF \
   -DVCPKG_MANIFEST_MODE=OFF \
   -DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET} \
-  -Ddatasketches_SOURCE=AUTO \
   -GNinja \
   ${arrow_dir}/cpp
 ninja install

@@ -84,7 +84,6 @@ ${CMAKE} -DARROW_BOOST_USE_SHARED=OFF \
     -DCMAKE_FIND_PACKAGE_NO_PACKAGE_REGISTRY=ON \
     -DCMAKE_UNITY_BUILD=${CMAKE_UNITY_BUILD:-OFF} \
     -Dxsimd_SOURCE=${xsimd_SOURCE:-} \
-    -Ddatasketches_SOURCE=AUTO \
     -Dzstd_SOURCE=${zstd_SOURCE:-} \
     ${EXTRA_CMAKE_FLAGS} \
     -G "${CMAKE_GENERATOR:-Unix Makefiles}" \
