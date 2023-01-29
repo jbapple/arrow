@@ -16,6 +16,7 @@
 // under the License.
 
 #include <cstring>
+#include <datasketches-cpp/hll/include/hll.hpp>
 
 #include "arrow/compute/api_aggregate.h"
 #include "arrow/compute/kernels/aggregate_internal.h"
@@ -23,8 +24,6 @@
 #include "arrow/type.h"
 #include "arrow/type_fwd.h"
 #include "arrow/type_traits.h"
-
-#include <datasketches-cpp/hll/include/hll.hpp>
 
 namespace arrow {
 namespace compute {

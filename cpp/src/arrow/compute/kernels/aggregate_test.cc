@@ -3093,6 +3093,7 @@ HLL_TEST_TYPE(Millis, Time32Type, uint32_t, time32(TimeUnit::MILLI))
 HLL_TEST_TYPE(Micros, Time64Type, uint64_t, time64(TimeUnit::MICRO))
 HLL_TEST_TYPE(Nanos, Time64Type, uint64_t, time64(TimeUnit::NANO))
 
+// Timestamp & Duration
 HLL_TEST_TYPE(SecondsDuration, Time32Type, uint32_t, duration(TimeUnit::SECOND))
 HLL_TEST_TYPE(MillisDuration, Time32Type, uint32_t, duration(TimeUnit::MILLI))
 HLL_TEST_TYPE(MicrosDuration, Time64Type, uint64_t, duration(TimeUnit::MICRO))
@@ -3103,6 +3104,7 @@ HLL_TEST_TYPE(MillisTimestamp, Time32Type, uint32_t, timestamp(TimeUnit::MILLI))
 HLL_TEST_TYPE(MicrosTimestamp, Time64Type, uint64_t, timestamp(TimeUnit::MICRO))
 HLL_TEST_TYPE(NanosTimestamp, Time64Type, uint64_t, timestamp(TimeUnit::NANO))
 
+// Interval
 HLL_TEST_TYPE(MonthInterval, MonthIntervalType, uint64_t, month_interval())
 HLL_TEST_TYPE(DayTimeInterval, DayTimeIntervalType, DayTimeIntervalType::DayMilliseconds,
               day_time_interval())
@@ -3114,9 +3116,9 @@ HLL_TEST_TYPE(Binary, BinaryType, std::string_view, binary())
 HLL_TEST_TYPE(LargeBinary, LargeBinaryType, std::string_view, large_binary())
 HLL_TEST_TYPE(Utf8, StringType, std::string_view, utf8())
 HLL_TEST_TYPE(LargeUtf8, LargeStringType, std::string_view, large_utf8())
-HLL_TEST_TYPE(FixedBinary, FixedSizeBinaryType, std::string_view, fixed_size_binary(3))
 
-// Decimal
+// Fixed Binary & Decimal
+HLL_TEST_TYPE(FixedBinary, FixedSizeBinaryType, std::string_view, fixed_size_binary(3))
 HLL_TEST_TYPE(Decimal128, Decimal128Type, std::string_view, decimal128(21, 3))
 HLL_TEST_TYPE(Decimal256, Decimal256Type, std::string_view, decimal256(13, 3))
 

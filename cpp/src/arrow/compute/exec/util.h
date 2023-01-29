@@ -37,10 +37,6 @@
 #include "arrow/util/mutex.h"
 #include "arrow/util/thread_pool.h"
 
-#if defined(ROTL64)
-#undef ROTL64
-#endif
-
 #if defined(__clang__) || defined(__GNUC__)
 #define BYTESWAP(x) __builtin_bswap64(x)
 #define ROTL(x, n) (((x) << (n)) | ((x) >> ((-n) & 31)))
