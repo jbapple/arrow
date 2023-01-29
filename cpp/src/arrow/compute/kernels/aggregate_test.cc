@@ -3054,7 +3054,30 @@ TEST_F(TestHllKernel, Random) {
   }
 }
 
-// All NaNs are considered equal by HLL
+// Check a variety of duplicate probabilities, with the arrays containing random elements. This uses
+// streaming HLL and has a lower variance.
+TEST_F(TestHllKernel, RandomDuplicates) {
+  for (int i = 0; i <= 20; ++i) {
+    UInt64Builder builder;
+    std::unordered_set<uint64_t> memo;
+    auto visit_null = []() { return Status::OK(); };
+    auto visit_value = [&](uint64_t arg) {
+      const bool inserted = memo.insert(arg).second;
+      if (inserted) {
+        return builder.Append(arg);
+      }
+      return Status::OK();
+    };
+    auto rand = random::RandomArrayGenerator(0x3869ec73u + i);
+    auto arr =
+      rand.Numeric<UInt64Type>(UINT64_C(1) << 20, UINT64_C(0), UINT64_C(1) << i, 0.0)->data();
+    auto r = VisitArraySpanInline<UInt64Type>(*arr, visit_value, visit_null);
+    auto input = builder.Finish().ValueOrDie();
+    CheckStreamHll(input, HllOptions{}, memo.size());
+  }
+}
+
+  // All NaNs are considered equal by HLL
 TEST_F(TestHllKernel, NaNs) {
   unsigned j = 0;
   DoubleBuilder builder;
