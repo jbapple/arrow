@@ -3046,7 +3046,8 @@ TEST_F(TestHllKernel, Random) {
       return Status::OK();
     };
     auto rand = random::RandomArrayGenerator(0x3869ec73u + i);
-    auto arr = rand.Numeric<UInt64Type>(1ul << i, UINT64_C(0), UINT64_MAX, 0.0)->data();
+    auto arr =
+        rand.Numeric<UInt64Type>(UINT64_C(1) << i, UINT64_C(0), UINT64_MAX, 0.0)->data();
     auto r = VisitArraySpanInline<UInt64Type>(*arr, visit_value, visit_null);
     auto input = builder.Finish().ValueOrDie();
     CheckStreamHll(input, HllOptions{}, memo.size());
@@ -3079,7 +3080,7 @@ TEST_F(TestHllKernel, Chunked) {
         auto visit_null = []() {};
         auto visit_value = [&](uint64_t arg) { memo.insert(arg); };
         auto rand = random::RandomArrayGenerator(0x97cb9188u + ((i * 10 + j) << j) + k);
-        array = rand.Numeric<UInt64Type>(1ul << i, UINT64_C(0), UINT64_MAX, 0.0);
+        array = rand.Numeric<UInt64Type>(UINT64_C(1) << i, UINT64_C(0), UINT64_MAX, 0.0);
         VisitArraySpanInline<UInt64Type>(*array->data(), visit_value, visit_null);
         array_vector.push_back(array);
       }

@@ -2220,8 +2220,7 @@ macro(build_datasketches)
                       PREFIX "${CMAKE_BINARY_DIR}"
                       URL ${DATASKETCHES_SOURCE_URL}
                       URL_HASH "SHA256=${ARROW_DATASKETCHES_BUILD_SHA256_CHECKSUM}"
-                      CMAKE_ARGS ${DATASKETCHES_CMAKE_ARGS}
-                      )
+                      CMAKE_ARGS ${DATASKETCHES_CMAKE_ARGS})
 
   set(DATASKETCHES_INCLUDE_DIR "${DATASKETCHES_PREFIX}")
   # The include directory must exist before it is referenced by a target.
@@ -2233,7 +2232,7 @@ macro(build_datasketches)
   set(DATASKETCHES_VENDORED TRUE)
 endmacro()
 
-set(ARROW_USE_DATASKETCHES TRUE)
+# set(ARROW_USE_DATASKETCHES TRUE)
 
 resolve_dependency(datasketches
   REQUIRED_VERSION
@@ -2241,12 +2240,12 @@ resolve_dependency(datasketches
   FORCE_ANY_NEWER_VERSION
   TRUE)
 
-if(datasketches_SOURCE STREQUAL "BUNDLED")
-  if(CMAKE_VERSION VERSION_LESS 3.11)
-    set_target_properties(datasketches PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
-      "${DATASKETCHES_INCLUDE_DIR}")
-  endif()
-endif()
+# if(datasketches_SOURCE STREQUAL "BUNDLED")
+#   if(CMAKE_VERSION VERSION_LESS 3.11)
+#     set_target_properties(datasketches PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+#       "${DATASKETCHES_INCLUDE_DIR}")
+#   endif()
+# endif()
 
 macro(build_rapidjson)
   message(STATUS "Building RapidJSON from source")
