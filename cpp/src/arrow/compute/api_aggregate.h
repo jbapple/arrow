@@ -378,14 +378,14 @@ Result<Datum> Variance(const Datum& value,
                        const VarianceOptions& options = VarianceOptions::Defaults(),
                        ExecContext* ctx = NULLPTR);
 
-/// \brief Calculate the approximate NCV of a numeric array
+/// \brief Calculate the approximate NDV of a numeric array
 ///
 /// \param[in] value input datum, expecting Array or ChunkedArray
 /// \param[in] options see HllOptions for more information
 /// \param[in] ctx the function execution context, optional
 /// \return datum of the computed approximate distinct cardinality as a DoubleScalar
 ///
-/// \since 11.0.0
+/// \since 12.0.0
 ARROW_EXPORT
 Result<Datum> Hll(const Datum& value, const HllOptions& options = HllOptions::Defaults(),
                   ExecContext* ctx = NULLPTR);

@@ -3012,8 +3012,8 @@ void CheckHll(const Datum& a, const HllOptions& options, uint64_t expected_ndv,
   constexpr double sigmas = 5;
   const double stddev =
       expected_ndv * sqrt(variance_factor / pow(2, options.lg_config_k));
-  EXPECT_GT(ndv->value, expected_ndv - sigmas * stddev) << "stddev: " << stddev;
-  EXPECT_LT(ndv->value, expected_ndv + sigmas * stddev) << "stddev: " << stddev;
+  EXPECT_GE(ndv->value, expected_ndv - sigmas * stddev) << "stddev: " << stddev;
+  EXPECT_LE(ndv->value, expected_ndv + sigmas * stddev) << "stddev: " << stddev;
 }
 
 // Classic HyperLogLog supports merges and has a variance factor of 1.04^2.
@@ -3054,7 +3054,7 @@ TEST_F(TestHllKernel, Random) {
   }
 }
 
-// All NaNs are considered equal
+// All NaNs are considered equal by HLL
 TEST_F(TestHllKernel, NaNs) {
   unsigned j = 0;
   DoubleBuilder builder;
@@ -3068,8 +3068,25 @@ TEST_F(TestHllKernel, NaNs) {
   CheckStreamHll(input, HllOptions{}, 1);
 }
 
+// Test empty HLL
+TEST_F(TestHllKernel, Empty) {
+  const HllOptions options{};
+  auto arr = ConstantArrayGenerator::Float64(0)->data();
+  ASSERT_OK_AND_ASSIGN(Datum out_ndv, Hll(*arr, options));
+  auto ndv = checked_cast<const DoubleScalar*>(out_ndv.scalar().get());
+  ASSERT_TRUE(ndv->is_valid);
+  EXPECT_EQ(ndv->value, 0);
+}
+
+// All NaNs are considered equal by HLL
+TEST_F(TestHllKernel, Nulls) {
+  auto rand = random::RandomArrayGenerator(867 - 5309);
+  auto arr = rand.Numeric<DoubleType>(1 << 20, 0, 0, 1.0);
+  CheckStreamHll(arr, HllOptions{}, 0);
+}
+
 // Check a variety of chunked array lengths, with the arrays containing random elements.
-// This used HLL merge.
+// This uses HLL merge.
 TEST_F(TestHllKernel, Chunked) {
   for (int i = 0; i <= 10; ++i) {
     for (int j = 0; j <= 10; ++j) {
