@@ -1436,7 +1436,8 @@ class ARROW_EXPORT DayTimeIntervalType : public IntervalType {
     }
     bool operator!=(DayMilliseconds other) const { return !(*this == other); }
     bool operator<(DayMilliseconds other) const {
-      return this->days < other.days || this->milliseconds < other.milliseconds;
+      return this->days < other.days ||
+             (this->days == other.days && this->milliseconds < other.milliseconds);
     }
   };
   using c_type = DayMilliseconds;
@@ -1476,6 +1477,13 @@ class ARROW_EXPORT MonthDayNanoIntervalType : public IntervalType {
              this->nanoseconds == other.nanoseconds;
     }
     bool operator!=(MonthDayNanos other) const { return !(*this == other); }
+        bool operator<(MonthDayNanos other) const {
+      return this->months < other.months ||
+             (this->months == other.months && this->days < other.days) ||
+             (this->months == other.months && this->days == other.days &&
+              this->nanoseconds < other.nanoseconds);
+    }
+
   };
   using c_type = MonthDayNanos;
   using PhysicalType = MonthDayNanoIntervalType;

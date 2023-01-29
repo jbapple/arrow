@@ -39,6 +39,7 @@
 #include "arrow/compute/registry.h"
 #include "arrow/testing/generator.h"
 #include "arrow/type.h"
+#include "arrow/type_fwd.h"
 #include "arrow/type_traits.h"
 #include "arrow/util/bitmap_reader.h"
 #include "arrow/util/checked_cast.h"
@@ -3054,8 +3055,73 @@ TEST_F(TestHllKernel, Random) {
   }
 }
 
-// Check a variety of duplicate probabilities, with the arrays containing random elements. This uses
+// Check a variety of array lengths, with the arrays containing random elements. This uses
 // streaming HLL and has a lower variance.
+#define HLL_TEST_TYPE(TEST_NAME, ARROW_TYPE, C_NAME, ARROW_NAME)         \
+  TEST_F(TestHllKernel, RandomType##TEST_NAME) {                         \
+    std::set<C_NAME> memo;                                               \
+    auto visit_null = []() {};                                           \
+    auto visit_value = [&](C_NAME arg) { memo.insert(arg); };            \
+    auto rand = random::RandomArrayGenerator(0x3869ec73u);               \
+    auto arr = rand.ArrayOf(ARROW_NAME, UINT64_C(1) << 15, 0.0)->data(); \
+    VisitArraySpanInline<ARROW_TYPE>(*arr, visit_value, visit_null);     \
+    CheckStreamHll(arr, HllOptions{}, memo.size());                      \
+  }
+
+HLL_TEST_TYPE(Bool, BooleanType, bool, boolean())
+
+// Numeric
+HLL_TEST_TYPE(Int8, Int8Type, int8_t, int8())
+HLL_TEST_TYPE(Int16, Int16Type, int16_t, int16())
+HLL_TEST_TYPE(Int32, Int32Type, int32_t, int32())
+HLL_TEST_TYPE(Int64, Int64Type, int64_t, int64())
+HLL_TEST_TYPE(UInt8, UInt8Type, uint8_t, uint8())
+HLL_TEST_TYPE(UInt16, UInt16Type, uint16_t, uint16())
+HLL_TEST_TYPE(UInt32, UInt32Type, uint32_t, uint32())
+HLL_TEST_TYPE(UInt64, UInt64Type, uint64_t, uint64())
+HLL_TEST_TYPE(HalfFloat, HalfFloatType, uint16_t, float16())
+HLL_TEST_TYPE(Float, FloatType, float, float32())
+HLL_TEST_TYPE(Double, DoubleType, double, float64())
+
+// Date
+HLL_TEST_TYPE(Date32, Date32Type, uint32_t, date32())
+HLL_TEST_TYPE(Date64, Date64Type, uint64_t, date64())
+
+// Time
+HLL_TEST_TYPE(Seconds, Time32Type, uint32_t, time32(TimeUnit::SECOND))
+HLL_TEST_TYPE(Millis, Time32Type, uint32_t, time32(TimeUnit::MILLI))
+HLL_TEST_TYPE(Micros, Time64Type, uint64_t, time64(TimeUnit::MICRO))
+HLL_TEST_TYPE(Nanos, Time64Type, uint64_t, time64(TimeUnit::NANO))
+
+HLL_TEST_TYPE(SecondsDuration, Time32Type, uint32_t, duration(TimeUnit::SECOND))
+HLL_TEST_TYPE(MillisDuration, Time32Type, uint32_t, duration(TimeUnit::MILLI))
+HLL_TEST_TYPE(MicrosDuration, Time64Type, uint64_t, duration(TimeUnit::MICRO))
+HLL_TEST_TYPE(NanosDuration, Time64Type, uint64_t, duration(TimeUnit::NANO))
+
+HLL_TEST_TYPE(SecondsTimestamp, Time32Type, uint32_t, timestamp(TimeUnit::SECOND))
+HLL_TEST_TYPE(MillisTimestamp, Time32Type, uint32_t, timestamp(TimeUnit::MILLI))
+HLL_TEST_TYPE(MicrosTimestamp, Time64Type, uint64_t, timestamp(TimeUnit::MICRO))
+HLL_TEST_TYPE(NanosTimestamp, Time64Type, uint64_t, timestamp(TimeUnit::NANO))
+
+HLL_TEST_TYPE(MonthInterval, MonthIntervalType, uint64_t, month_interval())
+HLL_TEST_TYPE(DayTimeInterval, DayTimeIntervalType, DayTimeIntervalType::DayMilliseconds,
+              day_time_interval())
+HLL_TEST_TYPE(MonthDayNanoInterval, MonthDayNanoIntervalType,
+              MonthDayNanoIntervalType::MonthDayNanos, month_day_nano_interval())
+
+// Binary & String
+HLL_TEST_TYPE(Binary, BinaryType, std::string_view, binary())
+HLL_TEST_TYPE(LargeBinary, LargeBinaryType, std::string_view, large_binary())
+HLL_TEST_TYPE(Utf8, StringType, std::string_view, utf8())
+HLL_TEST_TYPE(LargeUtf8, LargeStringType, std::string_view, large_utf8())
+HLL_TEST_TYPE(FixedBinary, FixedSizeBinaryType, std::string_view, fixed_size_binary(3))
+
+// Decimal
+HLL_TEST_TYPE(Decimal128, Decimal128Type, std::string_view, decimal128(21, 3))
+HLL_TEST_TYPE(Decimal256, Decimal256Type, std::string_view, decimal256(13, 3))
+
+// Check a variety of duplicate probabilities, with the arrays containing random
+// elements. This uses streaming HLL and has a lower variance.
 TEST_F(TestHllKernel, RandomDuplicates) {
   for (int i = 0; i <= 20; ++i) {
     UInt64Builder builder;
